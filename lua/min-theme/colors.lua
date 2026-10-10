@@ -19,6 +19,7 @@ function M.get(palette, config)
     editor_bg = p.surface_dark_0,
     fg = p.surface_light_1,
     panel_bg = p.panel_bg,
+    cmdline_bg = p.cmdline_bg,
     cursorline = p.cursorline,
     selection = p.selection,
     border = p.border,

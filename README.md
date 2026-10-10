@@ -29,7 +29,8 @@ vim.cmd.colorscheme("min-theme")
 | Role | Color / behavior |
 | --- | --- |
 | Editor | `#121212` background, `#cfcfcf` foreground |
-| Explorer, menus and floating windows | `#121212` background |
+| Explorer, plugin menus and floating windows | `#121212` background |
+| Native autocomplete (`:`, `/`, `?`) | `#161616` background |
 | Current line | `#181818` background |
 | Visual selection | `#2a2a2a` background, preserves syntax foreground |
 | Links | `#368cfc` |

@@ -4,7 +4,7 @@ The complete pinned VS Code Min Dark definition and 105 color occurrences are bu
 
 The pure compiler in `lua/min-theme/vscode.lua` maps explicit TextMate scopes and native UI counterparts. Its audit records every source key: direct match, approximation, or no Neovim equivalent. Unsupported VS Code surfaces are documented rather than assigned to unrelated editor categories. RGBA values are composited over their container. Symbol icon colors affect completion icons, not type text.
 
-The fork's default choices in `defaults.lua` supersede source UI colors: editor background `#121212`, foreground `#cfcfcf`, floating/picker background `#121212`, visual background `#2a2a2a`, current line `#181818` and link blue `#368cfc`. Contextual declarations/standalone variables use the editor foreground, not the source numeric foreground `#f8f8f8`. The static semantic declaration modifiers stay blue to support a uniform fallback.
+The fork's default choices in `defaults.lua` supersede source UI colors: editor background `#121212`, foreground `#cfcfcf`, floating/picker background `#121212`, native autocomplete background `#161616`, visual background `#2a2a2a`, current line `#181818` and link blue `#368cfc`. Contextual declarations/standalone variables use the editor foreground, not the source numeric foreground `#f8f8f8`. The static semantic declaration modifiers stay blue to support a uniform fallback.
 
 `vscode.audit()` describes the source adaptation; pass `require("min-theme.defaults").get(colors)` to include the fork's surface choices. The public `setup().overrides` merge occurs afterward and retains inherited attributes for partial definitions. An explicit link replaces the group.
 
@@ -135,3 +135,13 @@ accents, editor background and `inverse` option.
 No plugin-specific setup or highlight override is needed. The bundled VS Code
 source remains unchanged; `vscode.audit(defaults.get(colors), defaults.get_ui(colors))`
 records the global UI color choice alongside the original source value.
+
+## Native autocomplete surface
+
+`palette.cmdline_bg` defaults to `#161616` and supplies `Pmenu` and
+`PmenuSbar`, used by native command-line completion (including `mini.cmdline`).
+Blink's menu and border have independent definitions using `panel_bg` (`#121212`),
+so native completion background changes do not recolor the other menus. Match
+foregrounds and selected-item highlights retain their existing colors. The same
+`Pmenu` surface is also used by native insert-mode completion; Blink uses its
+own groups.

@@ -13,6 +13,7 @@ local palette = {
 
   -- Separate semantic surfaces; bg1 remains available for secondary UI.
   panel_bg = "#121212",
+  cmdline_bg = "#161616",
   cursorline = "#181818",
   selection = "#2a2a2a",
   border = "#383838",

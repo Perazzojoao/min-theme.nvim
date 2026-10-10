@@ -31,8 +31,11 @@ function M.get(colors)
     FloatTitle = { bg = panel },
     FloatFooter = { bg = panel },
     LspSignatureActiveParameter = { bold = true, italic = true },
-    Pmenu = { fg = fg, bg = panel },
-    PmenuSbar = { bg = panel },
+    Pmenu = { fg = fg, bg = colors.cmdline_bg },
+    PmenuSbar = { bg = colors.cmdline_bg },
+    -- Keep Blink's surface separate from the native command-line popup.
+    BlinkCmpMenu = { fg = fg, bg = panel },
+    BlinkCmpMenuBorder = { fg = fg, bg = panel },
     SnacksInputNormal = { link = "NormalFloat" },
     SnacksNotifierHistory = { link = "NormalFloat" },
     Underlined = { fg = colors.link, underline = true },
