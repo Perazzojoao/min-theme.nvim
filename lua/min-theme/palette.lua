@@ -4,16 +4,23 @@
 local palette = {
   -- Surfaces (dark backgrounds)
   surface_dark_0_hard = "#141414",
-  surface_dark_0 = "#1f1f1f",
+  surface_dark_0 = "#121212",
   surface_dark_0_soft = "#242424",
   surface_dark_1 = "#2A2A2A",
   surface_dark_2 = "#303030",
   surface_dark_3 = "#383838",
   surface_dark_4 = "#444444",
 
+  -- Separate semantic surfaces; bg1 remains available for secondary UI.
+  panel_bg = "#121212",
+  cursorline = "#181818",
+  selection = "#2a2a2a",
+  border = "#383838",
+  link = "#368cfc",
+
   -- Foreground/text surfaces
   surface_light_0 = "#C1C1C1",
-  surface_light_1 = "#E0E0E0",
+  surface_light_1 = "#cfcfcf",
   surface_light_2 = "#bbbbbb",
   surface_light_3 = "#888888",
   surface_light_4 = "#727272",

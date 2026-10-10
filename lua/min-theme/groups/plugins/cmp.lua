@@ -4,12 +4,27 @@ local M = {}
 ---@param config ThemeConfig
 ---@return table<string, HighlightDefinition>
 function M.get(colors, config)
+  local fg = colors.fg or colors.fg1
+  local panel = colors.panel_bg or colors.bg0
+  local border = colors.border or colors.bg3
+  local selection = colors.selection or colors.bg3
+
   -- Min Dark symbolIcon mapping:
   -- class/enum/event → #FF9800 (orange/primary_muted)
   -- method/constructor/function → #b392f0 (purple/secondary)
   -- field/interface/variable/enumMember → #79b8ff (blue/secondary_active)
   return {
     -- Blink Cmp
+    BlinkCmpMenu = { fg = fg, bg = panel },
+    BlinkCmpMenuBorder = { fg = border, bg = panel },
+    BlinkCmpMenuSelection = { fg = fg, bg = selection },
+    BlinkCmpDoc = { fg = fg, bg = panel },
+    BlinkCmpDocBorder = { fg = border, bg = panel },
+    BlinkCmpDocSeparator = { fg = border, bg = panel },
+    BlinkCmpDocCursorLine = { bg = selection },
+    BlinkCmpSignatureHelp = { fg = fg, bg = panel },
+    BlinkCmpSignatureHelpBorder = { fg = border, bg = panel },
+
     BlinkCmpLabel = { link = "ThemeFg0" },
     BlinkCmpLabelDeprecated = { link = "ThemeFg1" },
     BlinkCmpLabelMatch = { link = "ThemeSecondaryActiveBold" },
@@ -43,6 +58,9 @@ function M.get(colors, config)
     BlinkCmpSource = { link = "ThemeGray" },
     BlinkCmpGhostText = { link = "ThemeBg4" },
     -- nvim-cmp
+    CmpPmenu = { fg = fg, bg = panel },
+    CmpDocumentation = { fg = fg, bg = panel },
+    CmpDocumentationBorder = { fg = border, bg = panel },
     CmpItemAbbr = { link = "ThemeFg0" },
     CmpItemAbbrDeprecated = { link = "ThemeFg1" },
     CmpItemAbbrMatch = { link = "ThemeSecondaryActiveBold" },

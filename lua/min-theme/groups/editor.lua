@@ -23,6 +23,7 @@ function M.get(colors, config)
     SpecialKey = { link = "ThemeFg4" },
     Visual = { bg = colors.bg3, reverse = config.invert_selection },
     VisualNOS = { link = "Visual" },
+    -- Editor search uses its original accents, independently of menu matches.
     Search = { fg = colors.primary_active, bg = colors.bg0, reverse = config.inverse },
     IncSearch = { fg = colors.primary_soft, bg = colors.bg0, reverse = config.inverse },
     CurSearch = { link = "IncSearch" },
@@ -50,6 +51,8 @@ function M.get(colors, config)
     iCursor = { link = "Cursor" },
     lCursor = { link = "Cursor" },
     Pmenu = { fg = colors.fg1, bg = colors.bg1 },
+    PmenuMatch = { fg = colors.match, bold = config.bold },
+    PmenuMatchSel = { link = "PmenuMatch" },
     PmenuSel = { fg = colors.fg0, bg = colors.bg3, bold = config.bold },
     PmenuSbar = { bg = colors.bg2 },
     PmenuThumb = { bg = colors.bg4 },

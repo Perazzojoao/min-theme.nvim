@@ -19,10 +19,12 @@ end
 
 --- main load function
 MinTheme.load = function()
-  if vim.version().minor < 8 then
-    vim.notify_once("min-theme: you must use neovim 0.8 or higher")
+  if vim.fn.has("nvim-0.10") == 0 then
+    vim.notify_once("min-theme: you must use neovim 0.10 or higher")
     return
   end
+
+  require("min-theme.integrations").disable()
 
   -- reset colors
   if vim.g.colors_name then
@@ -44,6 +46,7 @@ MinTheme.load = function()
   for group, settings in pairs(groups) do
     vim.api.nvim_set_hl(0, group, settings)
   end
+  require("min-theme.integrations").enable(MinTheme.config)
 end
 
 return MinTheme

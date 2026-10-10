@@ -6,7 +6,7 @@ local M = {}
 function M.get(colors, config)
   return {
     MiniAnimateCursor = { reverse = true, nocombine = true },
-    MiniAnimateNormalFloat = { fg = colors.fg1, bg = colors.bg1 },
+    MiniAnimateNormalFloat = { link = "NormalFloat" },
     MiniClueBorder = { link = "FloatBorder" },
     MiniClueDescGroup = { link = "DiagnosticFloatingWarn" },
     MiniClueDescSingle = { link = "NormalFloat" },

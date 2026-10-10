@@ -16,6 +16,13 @@ function M.get(palette, config)
 
   local color_groups = {
     bg0 = p.surface_dark_0,
+    editor_bg = p.surface_dark_0,
+    fg = p.surface_light_1,
+    panel_bg = p.panel_bg,
+    cursorline = p.cursorline,
+    selection = p.selection,
+    border = p.border,
+    link = p.link,
     bg1 = p.surface_dark_1,
     bg2 = p.surface_dark_2,
     bg3 = p.surface_dark_3,
@@ -26,6 +33,7 @@ function M.get(palette, config)
     fg3 = p.surface_light_3,
     fg4 = p.surface_light_4,
     primary = p.primary,
+    match = p.primary,
     primary_active = p.primary_active,
     primary_soft = p.primary_soft,
     primary_muted = p.primary_muted,
@@ -52,28 +60,29 @@ function M.get(palette, config)
     color_groups.diff_change = get_contrast_value(p, contrast, "diff_tertiary")
   end
 
+  color_groups.editor_bg = color_groups.bg0
   return color_groups
 end
 
 ---@param colors table
 function M.setup_terminal_colors(colors)
   local term_colors = {
-    colors.bg0,             -- 0: black
-    colors.primary,         -- 1: red
-    colors.success,         -- 2: green
-    colors.primary_soft,    -- 3: yellow/orange
+    colors.bg0, -- 0: black
+    colors.primary, -- 1: red
+    colors.success, -- 2: green
+    colors.primary_soft, -- 3: yellow/orange
     colors.secondary_active, -- 4: blue
-    colors.secondary,       -- 5: magenta/purple
-    colors.secondary_soft,  -- 6: cyan
-    colors.fg3,             -- 7: white (dim)
-    colors.bg4,             -- 8: bright black
-    colors.primary_active,  -- 9: bright red
-    colors.git_added,       -- 10: bright green
-    colors.primary_muted,   -- 11: bright yellow/orange
-    colors.info,            -- 12: bright blue
-    colors.secondary,       -- 13: bright magenta
-    colors.secondary_soft,  -- 14: bright cyan
-    colors.fg1,             -- 15: bright white
+    colors.secondary, -- 5: magenta/purple
+    colors.secondary_soft, -- 6: cyan
+    colors.fg3, -- 7: white (dim)
+    colors.bg4, -- 8: bright black
+    colors.primary_active, -- 9: bright red
+    colors.git_added, -- 10: bright green
+    colors.primary_muted, -- 11: bright yellow/orange
+    colors.info, -- 12: bright blue
+    colors.secondary, -- 13: bright magenta
+    colors.secondary_soft, -- 14: bright cyan
+    colors.fg1, -- 15: bright white
   }
   for index, value in ipairs(term_colors) do
     vim.g["terminal_color_" .. index - 1] = value

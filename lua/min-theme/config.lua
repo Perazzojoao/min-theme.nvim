@@ -26,6 +26,8 @@ local M = {}
 ---@field nocombine boolean?
 
 ---@class ThemeConfig
+---@field variable_roles boolean?
+---@field integrations table<string, boolean>?
 ---@field bold boolean?
 ---@field contrast Contrast?
 ---@field dim_inactive boolean?
@@ -41,14 +43,24 @@ local M = {}
 ---@field undercurl boolean?
 ---@field underline boolean?
 M.default = {
+  variable_roles = true,
+  integrations = {
+    lsp = true,
+    treesitter = true,
+    gitsigns = true,
+    bufferline = true,
+    snacks = true,
+    blink = true,
+    render_markdown = true,
+  },
   terminal_colors = true,
   undercurl = true,
   underline = true,
   bold = true,
   italic = {
-    strings = true,
+    strings = false,
     emphasis = true,
-    comments = true,
+    comments = false,
     operators = false,
     folds = true,
   },
