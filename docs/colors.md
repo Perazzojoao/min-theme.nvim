@@ -10,7 +10,7 @@ The fork's default choices in `defaults.lua` supersede source UI colors: editor 
 
 The theme-owned role engine walks native ASTs with lexical binding scopes. It does not modify global queries or native semantic-token namespaces. Tree-sitter overlays use priority 101, below native semantic tokens; authoritative LSP variables use 128, declarations 129 and parameters 130. Without a usable parser, semantic parameter identity and declaration modifiers can still be used; unknown variable expressions remain blue. Edits discard stale overlays until fresh classification is available.
 
-Reloading the theme restores and reinstalls integrations. Switching colorschemes removes role namespaces, scheduled updates and the Bufferline icon adapter. No plugin or LSP configuration is mutated.
+Reloading the theme restores and reinstalls integrations. Switching colorschemes removes role namespaces and scheduled updates. Bufferline uses static theme highlights; its public highlight references keep generated icon backgrounds aligned with `TabLine` and `TabLineSel` (see the README setup example). No plugin functions are wrapped, and no plugin or LSP configuration is mutated.
 
 ## Complete source audit
 

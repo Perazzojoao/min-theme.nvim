@@ -115,7 +115,7 @@ function M.get(colors, config)
   end
 
   -- Read final tabline parents (including caller changes) for static Bufferline
-  -- groups. Icon backgrounds are synchronized separately by the guarded shim.
+  -- groups. Bufferline's public highlight references align generated icon backgrounds.
   local with_overrides = apply_overrides(groups, config.overrides)
   colors.diagnostics = {}
   for kind, name in pairs({

@@ -29,20 +29,18 @@ function M.enable(config)
       M.disable()
     end,
   })
-  for _, name in ipairs({ "roles", "bufferline" }) do
-    if name ~= "bufferline" or config.integrations.bufferline then
-      local ok, mod = pcall(require, "min-theme.integrations." .. name)
-      if ok then
-        local enabled, err = pcall(mod.enable, config)
-        if enabled then
-          active[name] = mod
-        else
-          pcall(mod.disable)
-          vim.notify_once("min-theme: " .. name .. " integration unavailable: " .. tostring(err), vim.log.levels.WARN)
-        end
+  for _, name in ipairs({ "roles" }) do
+    local ok, mod = pcall(require, "min-theme.integrations." .. name)
+    if ok then
+      local enabled, err = pcall(mod.enable, config)
+      if enabled then
+        active[name] = mod
       else
-        vim.notify_once("min-theme: " .. name .. " integration unavailable: " .. tostring(mod), vim.log.levels.WARN)
+        pcall(mod.disable)
+        vim.notify_once("min-theme: " .. name .. " integration unavailable: " .. tostring(err), vim.log.levels.WARN)
       end
+    else
+      vim.notify_once("min-theme: " .. name .. " integration unavailable: " .. tostring(mod), vim.log.levels.WARN)
     end
   end
   -- Vim's HTML syntax places tag names and delimiters in the same region.

@@ -1,6 +1,6 @@
 # min-theme.nvim
 
-Min Dark for Neovim 0.10+, with the VS Code Min Dark colors and this fork's default editor behavior. Loading the colorscheme is enough; no overrides or plugin integrations need to be configured.
+Min Dark for Neovim 0.10+, with the VS Code Min Dark colors and this fork's default editor behavior. Loading the colorscheme applies the default highlights. Bufferline icon backgrounds use the public configuration shown below.
 
 ```lua
 -- After installing Perazzojoao/min-theme.nvim with your plugin manager:
@@ -44,7 +44,7 @@ vim.cmd.colorscheme("min-theme")
 | Punctuation, including HTML/XML tag delimiters | `#bbbbbb` |
 | Active signature parameter | Bold and italic; preserves foreground and background |
 
-Native diagnostic signs and Gitsigns use the editor background. Rendered Markdown code blocks apply background only so injected code keeps its syntax colors. Bufferline's selected, visible and inactive tabs include matching icon backgrounds; Snacks pickers, explorer, input and notification windows share the menu palette. File preview contents inherit `Normal` and keep the editor background; preview borders and titles retain the menu surface.
+Native diagnostic signs and Gitsigns use the editor background. Rendered Markdown code blocks apply background only so injected code keeps its syntax colors. Bufferline's selected, visible and inactive tabs use the theme palette; Snacks pickers, explorer, input and notification windows share the menu palette. File preview contents inherit `Normal` and keep the editor background; preview borders and titles retain the menu surface.
 
 ## Optional integrations and fallback
 
@@ -70,7 +70,23 @@ require("min-theme").setup({
 vim.cmd.colorscheme("min-theme")
 ```
 
-The Bufferline icon adapter checks for the supported highlight API and respects `options.themable = false`. It does not call Bufferline setup or change user options. An unavailable adapter leaves the static theme groups as fallback. Theme switches remove owned overlays, callbacks and adapters; reloading the theme is idempotent.
+Bufferline integration provides static `BufferLine*` highlights only; the theme does not wrap plugin functions or modify Bufferline's configuration. To make generated icon backgrounds match the tabs, merge these public references into your existing Bufferline setup (load the colorscheme before setup):
+
+```lua
+require("bufferline").setup({
+  highlights = {
+    background = { bg = { highlight = "TabLine", attribute = "bg" } },
+    buffer_visible = { bg = { highlight = "TabLine", attribute = "bg" } },
+    buffer_selected = {
+      bg = { highlight = "TabLineSel", attribute = "bg" },
+      bold = true,
+      italic = false,
+    },
+  },
+})
+```
+
+Bufferline refreshes these references on colorscheme changes. Without the references, its own background shading applies to generated icons. With `options.themable = false`, Bufferline's configuration takes precedence over the theme's static groups. Theme switches remove owned overlays and callbacks; reloading the theme is idempotent.
 
 ## Customization
 
@@ -100,11 +116,10 @@ From the checkout, run the standalone checks:
 ```sh
 nvim --headless -u NONE -i NONE -l tests/theme.lua
 nvim --headless -u NONE -i NONE -l tests/roles.lua
-nvim --headless -u NONE -i NONE -l tests/bufferline.lua
 nvim --headless -u NONE -i NONE -l tests/bufferline_integration.lua
 ```
 
-Role checks require native parsers for the eight supported grammars on the runtimepath. Missing-parser and disabled-provider fallback are also tested explicitly. See each test's header for additional plugin/runtime paths when testing the real Bufferline adapter.
+Role checks require native parsers for the eight supported grammars on the runtimepath. Missing-parser and disabled-provider fallback are also tested explicitly. The Bufferline integration check uses the installed plugin; set `BUFFERLINE_RTP` to test another checkout.
 
 ## License
 
