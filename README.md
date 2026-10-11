@@ -53,6 +53,8 @@ The theme works without LSP clients, Tree-sitter parsers or third-party plugins.
 
 If classification is missing, disabled or fails, variables remain blue without the declaration/usage distinction. Identifiable parameters stay orange using available syntax or semantic metadata. A name whose parameter identity is unavailable cannot be guessed reliably and keeps its normal fallback. Bindings use lexical scopes rather than parameter-name matching across the whole buffer.
 
+While typing, existing classifications remain visible until their replacements are ready. Semantic roles use Neovim's `vim.lsp.semantic_tokens.highlight_token()` lifecycle, which tracks edits and replaces highlights with each new token snapshot, including removed symbols and changed categories. Syntax roles are rebuilt after edits without clearing them during the debounce interval. Disabling the integration or switching themes requests a native semantic refresh to remove the theme's overrides and rebuild other token consumers.
+
 All integrations default to enabled:
 
 ```lua
@@ -117,10 +119,13 @@ From the checkout, run the standalone checks:
 ```sh
 nvim --headless -u NONE -i NONE -l tests/theme.lua
 nvim --headless -u NONE -i NONE -l tests/roles.lua
+nvim --headless -u NONE -i NONE -l tests/semantic_lifecycle.lua
 nvim --headless -u NONE -i NONE -l tests/bufferline_integration.lua
 ```
 
 Role checks require native parsers for the eight supported grammars on the runtimepath. Missing-parser and disabled-provider fallback are also tested explicitly. The Bufferline integration check uses the installed plugin; set `BUFFERLINE_RTP` to test another checkout.
+
+The semantic lifecycle check uses an in-process LSP with delayed responses and the native semantic engine. It checks continuous typing, symbol movement/removal, category changes, reloads, integration toggles, theme switches and multiple clients. It requires the JavaScript parser but no external language server.
 
 ## License
 

@@ -357,8 +357,29 @@ assert(#marks > 0, "live buffer not classified on enable")
 for _, m in ipairs(marks) do
   assert(m[4].priority == 101)
 end
-local lsp_ns = vim.api.nvim_create_namespace("min-theme.lsp-roles.999")
+local end_col = #vim.api.nvim_buf_get_lines(buf, 0, 1, false)[1]
+vim.api.nvim_buf_set_text(buf, 0, end_col, 0, end_col, { " // typing" })
+assert(
+  #vim.api.nvim_buf_get_extmarks(buf, roles._namespace, 0, -1, {}) == #marks,
+  "syntax roles disappeared while an edit was waiting for classification"
+)
+local lsp_ns = vim.api.nvim_create_namespace("min-theme.test-semantic-tokens")
+local highlight_token, force_refresh = vim.lsp.semantic_tokens.highlight_token, vim.lsp.semantic_tokens.force_refresh
+-- Unit tests supply semantic snapshots; semantic_lifecycle.lua exercises the native engine.
+vim.lsp.semantic_tokens.highlight_token = function(token, buffer, client, hl_group, opts)
+  assert(client == 999)
+  vim.api.nvim_buf_set_extmark(buffer, lsp_ns, token.line, token.start_col, {
+    end_row = token.line,
+    end_col = token.end_col,
+    hl_group = hl_group,
+    priority = opts.priority,
+  })
+end
+vim.lsp.semantic_tokens.force_refresh = function(buffer)
+  vim.api.nvim_buf_clear_namespace(buffer, lsp_ns, 0, -1)
+end
 local function send(type, col, mods)
+  vim.api.nvim_buf_clear_namespace(buf, lsp_ns, 0, -1)
   vim.api.nvim_exec_autocmds("LspTokenUpdate", {
     buffer = buf,
     data = {
@@ -458,11 +479,11 @@ assert(
   "existing semantic tokens were not hydrated on reload"
 )
 vim.lsp.semantic_tokens.get_at_pos = get_at_pos
-vim.api.nvim_exec_autocmds("LspDetach", { buffer = buf, data = { client_id = 999 } })
-assert(#vim.api.nvim_buf_get_extmarks(buf, lsp_ns, 0, -1, {}) == 0, "LSP detach did not clear own overlays")
 vim.api.nvim_exec_autocmds("ColorSchemePre", {})
 assert(#vim.api.nvim_buf_get_extmarks(buf, roles._namespace, 0, -1, {}) == 0, "theme switch did not clear overlays")
+assert(#vim.api.nvim_buf_get_extmarks(buf, lsp_ns, 0, -1, {}) == 0, "theme switch did not refresh semantic overrides")
 roles.disable()
+vim.lsp.semantic_tokens.highlight_token, vim.lsp.semantic_tokens.force_refresh = highlight_token, force_refresh
 print(
   "roles: "
     .. count

@@ -1,9 +1,9 @@
--- Theme-owned overlays: never replace runtime queries or LSP namespaces.
+-- Syntax overlays belong to the theme; semantic overlays follow Neovim's token lifecycle.
 local M = {}
 local api = vim.api
 local syntax_ns = api.nvim_create_namespace("min-theme.variable-roles")
 local enabled, options, group = false, {}, nil
-local caches, attached, generations, clients = {}, {}, {}, {}
+local caches, attached, generations, semantic_buffers = {}, {}, {}, {}
 local supported = {
   c_sharp = true,
   java = true,
@@ -587,25 +587,16 @@ local role_groups = {
   access = "@variable.access",
   standalone = "@variable.standalone",
 }
-local function clear_lsp(buf, client)
-  for id, state in pairs(clients) do
-    if not client or client == id then
-      if api.nvim_buf_is_valid(buf) then
-        pcall(api.nvim_buf_clear_namespace, buf, state.ns, 0, -1)
-      end
-      state.marks[buf] = nil
-    end
-  end
-end
 local function refresh(buf)
   if not enabled or not api.nvim_buf_is_valid(buf) or not api.nvim_buf_is_loaded(buf) then
     return
   end
+  local roles = options.integrations.treesitter and cache(buf).roles or {}
   api.nvim_buf_clear_namespace(buf, syntax_ns, 0, -1)
   if not options.integrations.treesitter then
     return
   end
-  for _, r in ipairs(cache(buf).roles) do
+  for _, r in ipairs(roles) do
     api.nvim_buf_set_extmark(
       buf,
       syntax_ns,
@@ -631,10 +622,8 @@ local function attach(buf)
   attached[buf] = api.nvim_buf_attach(buf, false, {
     on_lines = function(_, b)
       caches[b] = nil
-      -- Old semantic overlays must not persist between an edit and fresh tokens.
+      -- Extmarks track edits while fresh syntax and semantic classifications are pending.
       if enabled then
-        clear_lsp(b)
-        pcall(api.nvim_buf_clear_namespace, b, syntax_ns, 0, -1)
         vim.schedule(function()
           if enabled then
             queue(b)
@@ -644,8 +633,8 @@ local function attach(buf)
     end,
     on_detach = function(_, b)
       attached[b], caches[b], generations[b] = nil, nil, nil
+      semantic_buffers[b] = nil
       vim.schedule(function()
-        clear_lsp(b)
         if api.nvim_buf_is_valid(b) then
           pcall(api.nvim_buf_clear_namespace, b, syntax_ns, 0, -1)
         end
@@ -662,19 +651,8 @@ local function token_update(event)
   if not token or not id then
     return
   end
-  local state = clients[id]
-  if not state then
-    state = { ns = api.nvim_create_namespace("min-theme.lsp-roles." .. id), marks = {} }
-    clients[id] = state
-  end
   local buf = event.buf
-  state.marks[buf] = state.marks[buf] or {}
-  local marks = state.marks[buf]
   local key = token.line .. ":" .. token.start_col
-  if marks[key] then
-    pcall(api.nvim_buf_del_extmark, buf, state.ns, marks[key])
-    marks[key] = nil
-  end
   local role, priority
   if token.type == "parameter" then
     role, priority = "parameter", 130
@@ -693,13 +671,10 @@ local function token_update(event)
     end
   end
   if role then
-    marks[key] = api.nvim_buf_set_extmark(
-      buf,
-      state.ns,
-      token.line,
-      token.start_col,
-      { end_row = token.line, end_col = token.end_col, hl_group = role_groups[role], priority = priority }
-    )
+    -- Native tokens persist during debounce and remove these marks with the next token batch,
+    -- including symbols that disappear or change to a non-variable semantic category.
+    vim.lsp.semantic_tokens.highlight_token(token, buf, id, role_groups[role], { priority = priority })
+    semantic_buffers[buf] = true
   end
 end
 local function hydrate(buf)
@@ -710,8 +685,7 @@ local function hydrate(buf)
   if not tokens or type(tokens.get_at_pos) ~= "function" then
     return
   end
-  -- Loading a colorscheme does not unmark native semantic tokens. Re-read known
-  -- positions through the public API, keeping native highlight namespaces intact.
+  -- Re-read known positions through the public API when native tokens are already available.
   for _, node in pairs(cache(buf).nodes) do
     local row, col = node:range()
     local ok, found = pcall(tokens.get_at_pos, buf, row, col)
@@ -730,9 +704,13 @@ function M.disable()
   end
   for _, buf in ipairs(api.nvim_list_bufs()) do
     pcall(api.nvim_buf_clear_namespace, buf, syntax_ns, 0, -1)
-    clear_lsp(buf)
+    if semantic_buffers[buf] then
+      -- Refresh through Neovim so native and other plugins' token callbacks are rebuilt
+      -- without this theme's overrides after disabling or switching colorschemes.
+      pcall(vim.lsp.semantic_tokens.force_refresh, buf)
+    end
   end
-  caches, generations = {}, {}
+  caches, generations, semantic_buffers = {}, {}, {}
   -- Buffer callbacks stay attached but dormant, avoiding duplicate callbacks on re-enable.
 end
 function M.enable(config)
@@ -752,13 +730,7 @@ function M.enable(config)
     group = group,
     callback = function(e)
       caches[e.buf], generations[e.buf], attached[e.buf] = nil, nil, nil
-      clear_lsp(e.buf)
-    end,
-  })
-  api.nvim_create_autocmd("LspDetach", {
-    group = group,
-    callback = function(e)
-      clear_lsp(e.buf, e.data and e.data.client_id)
+      semantic_buffers[e.buf] = nil
     end,
   })
   api.nvim_create_autocmd("LspTokenUpdate", {
