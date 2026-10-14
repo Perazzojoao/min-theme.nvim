@@ -53,7 +53,7 @@ The theme works without LSP clients, Tree-sitter parsers or third-party plugins.
 
 If classification is missing, disabled or fails, variables remain blue without the declaration/usage distinction. Identifiable parameters stay orange using available syntax or semantic metadata. A name whose parameter identity is unavailable cannot be guessed reliably and keeps its normal fallback. Bindings use lexical scopes rather than parameter-name matching across the whole buffer.
 
-While typing, existing classifications remain visible until their replacements are ready. Semantic roles use Neovim's `vim.lsp.semantic_tokens.highlight_token()` lifecycle, which tracks edits and replaces highlights with each new token snapshot, including removed symbols and changed categories. Syntax roles are rebuilt after edits without clearing them during the debounce interval. Disabling the integration or switching themes requests a native semantic refresh to remove the theme's overrides and rebuild other token consumers.
+While typing, existing classifications remain visible until their replacements are ready. Semantic roles use Neovim's `vim.lsp.semantic_tokens.highlight_token()` lifecycle, which tracks edits and replaces highlights with each new token snapshot, including removed symbols and changed categories. Syntax roles are rebuilt after edits with a per-buffer 30 ms debounce and without clearing them during that interval; unchanged buffers reuse their rendered classifications. Disabling the integration or switching themes requests a native semantic refresh to remove the theme's overrides and rebuild other token consumers.
 
 All integrations default to enabled:
 

@@ -2,6 +2,7 @@
 vim.opt.rtp:prepend(vim.fn.getcwd())
 vim.opt.rtp:append(vim.fn.stdpath("data") .. "/site")
 local roles = require("min-theme.integrations.roles")
+local api = vim.api
 local cases = {
   {
     lang = "javascript",
@@ -324,6 +325,28 @@ cases[#cases + 1] = {
     },
   },
 }
+local large_lines = { "class A { void F(int p) {" }
+for i = 1, 500 do
+  large_lines[#large_lines + 1] = ("var v%d = p; v%d.Go(p); use(v%d);"):format(i, i, i)
+end
+large_lines[#large_lines + 1] = "} }"
+local large_source = table.concat(large_lines, "\n")
+local large_parser = vim.treesitter.get_string_parser(large_source, "c_sharp")
+local large_root = large_parser:parse()[1]:root()
+local node_index = getmetatable(large_root).__index
+local original_field, block_field_queries = node_index.field, 0
+node_index.field = function(node, name)
+  local kind = node:type()
+  if kind == "block" or kind == "statement_block" then
+    block_field_queries = block_field_queries + 1
+  end
+  return original_field(node, name)
+end
+local analyze_ok, large_roles = pcall(roles._analyze, large_root, large_source, "c_sharp")
+node_index.field = original_field
+assert(analyze_ok, "large block analysis failed: " .. tostring(large_roles))
+assert(block_field_queries == 0, "eligibility queried fields on a block for each identifier")
+assert(#large_roles > 500, "large block analysis skipped its identifiers")
 local count = 0
 for _, case in ipairs(cases) do
   local ok, parser = pcall(vim.treesitter.get_string_parser, case.source, case.lang)
@@ -357,6 +380,35 @@ assert(#marks > 0, "live buffer not classified on enable")
 for _, m in ipairs(marks) do
   assert(m[4].priority == 101)
 end
+local clear_namespace = vim.api.nvim_buf_clear_namespace
+local get_changedtick = api.nvim_buf_get_changedtick
+local rebuilds = 0
+local refresh_checks = 0
+api.nvim_buf_clear_namespace = function(buffer, namespace, ...)
+  if buffer == buf and namespace == roles._namespace then
+    rebuilds = rebuilds + 1
+  end
+  return clear_namespace(buffer, namespace, ...)
+end
+api.nvim_buf_get_changedtick = function(buffer, ...)
+  if buffer == buf then
+    refresh_checks = refresh_checks + 1
+  end
+  return get_changedtick(buffer, ...)
+end
+local checks_before_bufenter = refresh_checks
+for _ = 1, 4 do
+  api.nvim_exec_autocmds("BufEnter", { buffer = buf })
+end
+assert(
+  vim.wait(500, function()
+    return refresh_checks > checks_before_bufenter
+  end, 5),
+  "unchanged BufEnter refresh did not settle"
+)
+api.nvim_buf_clear_namespace = clear_namespace
+api.nvim_buf_get_changedtick = get_changedtick
+assert(rebuilds == 0, "unchanged BufEnter rebuilt syntax marks")
 local end_col = #vim.api.nvim_buf_get_lines(buf, 0, 1, false)[1]
 vim.api.nvim_buf_set_text(buf, 0, end_col, 0, end_col, { " // typing" })
 assert(
@@ -482,6 +534,76 @@ vim.lsp.semantic_tokens.get_at_pos = get_at_pos
 vim.api.nvim_exec_autocmds("ColorSchemePre", {})
 assert(#vim.api.nvim_buf_get_extmarks(buf, roles._namespace, 0, -1, {}) == 0, "theme switch did not clear overlays")
 assert(#vim.api.nvim_buf_get_extmarks(buf, lsp_ns, 0, -1, {}) == 0, "theme switch did not refresh semantic overrides")
+local stale_buf = api.nvim_create_buf(false, true)
+api.nvim_buf_set_lines(stale_buf, 0, -1, false, { "function stale(p) { return p; }" })
+vim.bo[stale_buf].filetype = "javascript"
+local scheduled_roles, original_schedule = {}, vim.schedule
+vim.schedule = function(callback)
+  local source = debug.getinfo(callback, "S").source
+  if source:find("roles.lua", 1, true) then
+    scheduled_roles[#scheduled_roles + 1] = callback
+  else
+    original_schedule(callback)
+  end
+end
+roles.enable({ variable_roles = true, integrations = { treesitter = true, lsp = true } })
+api.nvim_buf_set_lines(stale_buf, 0, 0, false, { "// edit" })
+assert(roles._timers[stale_buf], "edit did not allocate a per-buffer debounce timer")
+assert(
+  vim.wait(500, function()
+    return #scheduled_roles > 0
+  end, 5),
+  "debounce timer did not schedule its refresh"
+)
+api.nvim_buf_set_lines(stale_buf, 0, 0, false, { "// newer edit" })
+clear_namespace = api.nvim_buf_clear_namespace
+local superseded_rebuilds = 0
+api.nvim_buf_clear_namespace = function(buffer, namespace, ...)
+  if buffer == stale_buf and namespace == roles._namespace then
+    superseded_rebuilds = superseded_rebuilds + 1
+  end
+  return clear_namespace(buffer, namespace, ...)
+end
+scheduled_roles[1]()
+api.nvim_buf_clear_namespace = clear_namespace
+assert(superseded_rebuilds == 0, "superseded scheduled refresh ignored its generation")
+roles.disable()
+assert(not roles._timers[stale_buf], "disable retained a debounce timer")
+roles.enable({ variable_roles = true, integrations = { treesitter = true, lsp = true } })
+clear_namespace = api.nvim_buf_clear_namespace
+local stale_rebuilds = 0
+api.nvim_buf_clear_namespace = function(buffer, namespace, ...)
+  if buffer == stale_buf and namespace == roles._namespace then
+    stale_rebuilds = stale_rebuilds + 1
+  end
+  return clear_namespace(buffer, namespace, ...)
+end
+for _, callback in ipairs(scheduled_roles) do
+  callback()
+end
+api.nvim_buf_clear_namespace = clear_namespace
+vim.schedule = original_schedule
+assert(stale_rebuilds == 0, "stale timer callback refreshed after disable and re-enable")
+api.nvim_buf_set_lines(stale_buf, 0, 0, false, { "// colorscheme change" })
+assert(roles._timers[stale_buf], "edit did not allocate a timer before colorscheme cleanup")
+api.nvim_exec_autocmds("ColorSchemePre", {})
+assert(not roles._timers[stale_buf], "colorscheme cleanup retained a debounce timer")
+roles.enable({ variable_roles = true, integrations = { treesitter = true, lsp = true } })
+local detached_buf = api.nvim_create_buf(false, true)
+api.nvim_buf_set_lines(detached_buf, 0, -1, false, { "function detached(p) { return p; }" })
+vim.bo[detached_buf].filetype = "javascript"
+api.nvim_exec_autocmds("BufEnter", { buffer = detached_buf })
+assert(roles._timers[detached_buf], "BufEnter did not allocate a debounce timer")
+api.nvim_buf_delete(detached_buf, { unload = true })
+assert(not roles._timers[detached_buf], "detach retained a debounce timer")
+assert(api.nvim_buf_is_valid(detached_buf) and not api.nvim_buf_is_loaded(detached_buf), "unload test wiped the buffer")
+local wiped_buf = api.nvim_create_buf(false, true)
+api.nvim_buf_set_lines(wiped_buf, 0, -1, false, { "function wiped(p) { return p; }" })
+vim.bo[wiped_buf].filetype = "javascript"
+api.nvim_exec_autocmds("BufEnter", { buffer = wiped_buf })
+assert(roles._timers[wiped_buf], "BufEnter did not allocate a timer before wipeout")
+api.nvim_buf_delete(wiped_buf, { force = true })
+assert(not roles._timers[wiped_buf], "wipeout retained a debounce timer")
 roles.disable()
 vim.lsp.semantic_tokens.highlight_token, vim.lsp.semantic_tokens.force_refresh = highlight_token, force_refresh
 print(

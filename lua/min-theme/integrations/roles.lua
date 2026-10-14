@@ -4,6 +4,8 @@ local api = vim.api
 local syntax_ns = api.nvim_create_namespace("min-theme.variable-roles")
 local enabled, options, group = false, {}, nil
 local caches, attached, generations, semantic_buffers = {}, {}, {}, {}
+local rendered, timers = {}, {}
+local generation_sequence, enable_epoch, config_generation = 0, 0, 0
 local supported = {
   c_sharp = true,
   java = true,
@@ -207,6 +209,10 @@ local function eligible(node)
   local parent = node:parent()
   while parent do
     local kind = parent:type()
+    if kind == "statement_block" or kind == "block" then
+      -- These blocks have no type or returns fields; avoid querying them for each identifier.
+      break
+    end
     -- A known binding can share a spelling with a type, method or object key.
     if kind:find("type") and kind ~= "type_assertion" and kind ~= "typeof_expression" then
       return false
@@ -260,7 +266,7 @@ local function eligible(node)
     if same(field(parent, "type"), child) or same(field(parent, "returns"), child) then
       return false
     end
-    if kind == "statement_block" or kind == "block" or functions[kind] then
+    if functions[kind] then
       break
     end
     child, parent = parent, parent:parent()
@@ -591,29 +597,72 @@ local function refresh(buf)
   if not enabled or not api.nvim_buf_is_valid(buf) or not api.nvim_buf_is_loaded(buf) then
     return
   end
-  local roles = options.integrations.treesitter and cache(buf).roles or {}
-  api.nvim_buf_clear_namespace(buf, syntax_ns, 0, -1)
-  if not options.integrations.treesitter then
+  local tick = api.nvim_buf_get_changedtick(buf)
+  local lang = language(buf)
+  local previous = rendered[buf]
+  if
+    previous
+    and previous.tick == tick
+    and previous.lang == lang
+    and previous.config_generation == config_generation
+  then
     return
   end
-  for _, r in ipairs(roles) do
-    api.nvim_buf_set_extmark(
-      buf,
-      syntax_ns,
-      r[1],
-      r[2],
-      { end_row = r[3], end_col = r[4], hl_group = role_groups[r.role], priority = 101 }
-    )
+  local roles = options.integrations.treesitter and cache(buf).roles or {}
+  api.nvim_buf_clear_namespace(buf, syntax_ns, 0, -1)
+  if options.integrations.treesitter then
+    for _, r in ipairs(roles) do
+      api.nvim_buf_set_extmark(
+        buf,
+        syntax_ns,
+        r[1],
+        r[2],
+        { end_row = r[3], end_col = r[4], hl_group = role_groups[r.role], priority = 101 }
+      )
+    end
+  end
+  rendered[buf] = { tick = tick, lang = lang, config_generation = config_generation }
+end
+local function close_timer(buf)
+  local timer = timers[buf]
+  if timer then
+    timer:stop()
+    if not timer:is_closing() then
+      timer:close()
+    end
+    timers[buf] = nil
   end
 end
 local function queue(buf)
-  generations[buf] = (generations[buf] or 0) + 1
-  local generation = generations[buf]
-  vim.defer_fn(function()
-    if enabled and generations[buf] == generation then
-      pcall(refresh, buf)
+  generation_sequence = generation_sequence + 1
+  local generation, epoch = generation_sequence, enable_epoch
+  generations[buf] = generation
+  local timer = timers[buf]
+  if not timer then
+    timer = vim.uv.new_timer()
+    timers[buf] = timer
+  end
+  timer:stop()
+  timer:start(30, 0, function()
+    vim.schedule(function()
+      if enabled and enable_epoch == epoch and generations[buf] == generation then
+        pcall(refresh, buf)
+      end
+    end)
+  end)
+end
+local function detach(buf)
+  attached[buf], caches[buf], rendered[buf] = nil, nil, nil
+  close_timer(buf)
+  generation_sequence = generation_sequence + 1
+  local generation, epoch = generation_sequence, enable_epoch
+  generations[buf] = generation
+  semantic_buffers[buf] = nil
+  vim.schedule(function()
+    if generations[buf] == generation and enable_epoch == epoch and api.nvim_buf_is_valid(buf) then
+      pcall(api.nvim_buf_clear_namespace, buf, syntax_ns, 0, -1)
     end
-  end, 30)
+  end)
 end
 local function attach(buf)
   if attached[buf] or not api.nvim_buf_is_loaded(buf) then
@@ -621,24 +670,14 @@ local function attach(buf)
   end
   attached[buf] = api.nvim_buf_attach(buf, false, {
     on_lines = function(_, b)
-      caches[b] = nil
+      caches[b], rendered[b] = nil, nil
       -- Extmarks track edits while fresh syntax and semantic classifications are pending.
       if enabled then
-        vim.schedule(function()
-          if enabled then
-            queue(b)
-          end
-        end)
+        queue(b)
       end
     end,
     on_detach = function(_, b)
-      attached[b], caches[b], generations[b] = nil, nil, nil
-      semantic_buffers[b] = nil
-      vim.schedule(function()
-        if api.nvim_buf_is_valid(b) then
-          pcall(api.nvim_buf_clear_namespace, b, syntax_ns, 0, -1)
-        end
-      end)
+      detach(b)
     end,
   }) or nil
 end
@@ -698,6 +737,7 @@ local function hydrate(buf)
 end
 function M.disable()
   enabled = false
+  enable_epoch = enable_epoch + 1
   if group then
     pcall(api.nvim_del_augroup_by_id, group)
     group = nil
@@ -710,13 +750,17 @@ function M.disable()
       pcall(vim.lsp.semantic_tokens.force_refresh, buf)
     end
   end
-  caches, generations, semantic_buffers = {}, {}, {}
+  for buf in pairs(timers) do
+    close_timer(buf)
+  end
+  caches, generations, rendered, semantic_buffers = {}, {}, {}, {}
   -- Buffer callbacks stay attached but dormant, avoiding duplicate callbacks on re-enable.
 end
 function M.enable(config)
   M.disable()
   options = config or {}
   options.integrations = options.integrations or { treesitter = true, lsp = true }
+  config_generation = config_generation + 1
   enabled = true
   group = api.nvim_create_augroup("min-theme-variable-roles", { clear = true })
   api.nvim_create_autocmd({ "BufEnter", "BufReadPost", "FileType" }, {
@@ -729,7 +773,8 @@ function M.enable(config)
   api.nvim_create_autocmd("BufWipeout", {
     group = group,
     callback = function(e)
-      caches[e.buf], generations[e.buf], attached[e.buf] = nil, nil, nil
+      caches[e.buf], generations[e.buf], rendered[e.buf], attached[e.buf] = nil, nil, nil, nil
+      close_timer(e.buf)
       semantic_buffers[e.buf] = nil
     end,
   })
@@ -752,4 +797,5 @@ end
 M._namespace = syntax_ns
 M._analyze = analyze
 M._cache = cache
+M._timers = timers
 return M
