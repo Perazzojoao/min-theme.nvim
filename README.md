@@ -35,6 +35,7 @@ vim.cmd.colorscheme("min-theme")
 | Visual selection | `#2a2a2a` background, preserves syntax foreground |
 | Links | `#368cfc` |
 | Menu and completion matches | `#f97583` foreground; preserves background |
+| Selected menu row | Preserves text and match colors; highlights the background |
 | Editor search matches | Original `Search` / `IncSearch` accents and inversion |
 | Variables, without contextual classification | `#79b8ff` |
 | Classified declaration or standalone variable | `#cfcfcf` |

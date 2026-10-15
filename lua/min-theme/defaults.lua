@@ -54,7 +54,11 @@ end
 
 -- UI keys are global theme roles, shared by every mapped consumer.
 function M.get_ui(colors)
-  return { ["list.highlightForeground"] = colors.match }
+  return {
+    ["list.highlightForeground"] = colors.match,
+    -- Transparent foreground: selected rows preserve text and match colors.
+    ["list.activeSelectionForeground"] = "#00000000",
+  }
 end
 
 return M

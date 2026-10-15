@@ -53,7 +53,7 @@ function M.get(colors, config)
     Pmenu = { fg = colors.fg1, bg = colors.bg1 },
     PmenuMatch = { fg = colors.match, bold = config.bold },
     PmenuMatchSel = { link = "PmenuMatch" },
-    PmenuSel = { fg = colors.fg0, bg = colors.bg3, bold = config.bold },
+    PmenuSel = { bg = colors.bg3, bold = config.bold },
     PmenuSbar = { bg = colors.bg2 },
     PmenuThumb = { bg = colors.bg4 },
     DiffDelete = { bg = colors.diff_delete },

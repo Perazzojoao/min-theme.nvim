@@ -423,7 +423,7 @@ local function compile(user_overrides, ui_colors)
     { "PmenuSel", "BlinkCmpMenuSelection", "SnacksPickerListCursorLine" },
     "fg",
     {
-      reason = "Applied to active rows in native, Blink, and Snacks lists.",
+      reason = "Opaque values color active rows in native, Blink, and Snacks lists; transparent values preserve existing text and match colors.",
     }
   )
   set_ui(

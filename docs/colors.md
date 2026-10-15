@@ -145,3 +145,19 @@ so native completion background changes do not recolor the other menus. Match
 foregrounds and selected-item highlights retain their existing colors. The same
 `Pmenu` surface is also used by native insert-mode completion; Blink uses its
 own groups.
+
+## Selected menu rows
+
+The original `list.activeSelectionForeground` value (`#F5F5F5`) recolors the
+selected item through `PmenuSel`, `BlinkCmpMenuSelection` and
+`SnacksPickerListCursorLine`. The fork sets this global UI key to fully
+transparent (`#00000000`), so the compiler emits no selection foreground.
+Their base definitions also omit foregrounds. Selection backgrounds still use
+`list.activeSelectionBackground` (`#212121`); native completion keeps its bold
+selection style.
+
+Matched characters keep `list.highlightForeground` (`#f97583`) via
+`SnacksPickerMatch`, `BlinkCmpLabelMatch`, `PmenuMatch` and `PmenuMatchSel`.
+The original VS Code source stays unchanged, and the audit records the global
+UI adaptation. Editor `Search`, `IncSearch`, `CurSearch` and `Visual` groups are
+independent of these menu selection roles.

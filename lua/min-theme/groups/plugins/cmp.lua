@@ -17,7 +17,7 @@ function M.get(colors, config)
     -- Blink Cmp
     BlinkCmpMenu = { fg = fg, bg = panel },
     BlinkCmpMenuBorder = { fg = border, bg = panel },
-    BlinkCmpMenuSelection = { fg = fg, bg = selection },
+    BlinkCmpMenuSelection = { bg = selection },
     BlinkCmpDoc = { fg = fg, bg = panel },
     BlinkCmpDocBorder = { fg = border, bg = panel },
     BlinkCmpDocSeparator = { fg = border, bg = panel },
